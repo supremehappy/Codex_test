@@ -48,6 +48,7 @@ mod tests {
     use super::*;
     use axum::body::Body;
     use axum::http::{Request, StatusCode};
+    use tower::util::ServiceExt;
 
     #[tokio::test]
     async fn test_get_hello() {
