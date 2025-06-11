@@ -1,43 +1,14 @@
-use axum::{routing::{get, post}, Router, Json, http::StatusCode};
-use serde::{Deserialize, Serialize};
+use axum::{routing::{get, post}, Router};
 use std::{env, net::SocketAddr};
 
-#[derive(Serialize)]
-struct HelloResponse {
-    message: String,
-}
-
-async fn get_hello() -> Json<HelloResponse> {
-    Json(HelloResponse {
-        message: "Hello".to_string(),
-    })
-}
-
-#[derive(Deserialize)]
-struct ContentRequest {
-    content: String,
-}
-
-#[derive(Serialize)]
-struct ContentResponse {
-    received: String,
-}
-
-async fn post_content(Json(payload): Json<ContentRequest>) -> Result<Json<ContentResponse>, StatusCode> {
-    if payload.content.len() > 256 {
-        return Err(StatusCode::BAD_REQUEST);
-    }
-
-    Ok(Json(ContentResponse {
-        received: payload.content,
-    }))
-}
+mod models;
+mod controllers;
 
 #[tokio::main]
 async fn main() {
     let app = Router::new()
-        .route("/sample/getHello", get(get_hello))
-        .route("/sample/postContent", post(post_content));
+        .route("/sample/getHello", get(controllers::get_hello))
+        .route("/sample/postContent", post(controllers::post_content));
 
     let host = env::var("HOST").unwrap_or_else(|_| "127.0.0.1".to_string());
     let port = env::var("PORT")
@@ -59,14 +30,15 @@ async fn main() {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use axum::{routing::{get, post}, Router};
     use axum::body::Body;
     use axum::http::{Request, StatusCode};
     use tower::util::ServiceExt;
+    use serde_json;
 
     #[tokio::test]
     async fn test_get_hello() {
-        let app = Router::new().route("/sample/getHello", get(get_hello));
+        let app = Router::new().route("/sample/getHello", get(super::controllers::get_hello));
 
         let response = app
             .oneshot(Request::builder().uri("/sample/getHello").body(Body::empty()).unwrap())
@@ -78,7 +50,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_post_content() {
-        let app = Router::new().route("/sample/postContent", post(post_content));
+        let app = Router::new().route("/sample/postContent", post(super::controllers::post_content));
 
         let payload = serde_json::json!({"content": "data"});
         let response = app
