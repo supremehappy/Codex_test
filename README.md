@@ -22,7 +22,9 @@ curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 cargo run -p rest_api
 ```
 
-서버는 기본적으로 `0.0.0.0:3000`에서 실행되므로 외부에서도 접근할 수 있습니다.
+환경 변수 `HOST`와 `PORT`를 이용해 바인딩 주소를 설정할 수 있으며, 기본값은
+`127.0.0.1:3000`입니다. 따라서 기본 설정에서는 로컬호스트에서만 접근이 가능합
+니다.
 
 ## API 명세
 
@@ -58,3 +60,10 @@ curl http://<서버주소>:3000/sample/getHello
 ```bash
 cargo test -p rest_api
 ```
+
+## 보안 개선 사항
+
+- 서버 주소는 `HOST`와 `PORT` 환경 변수로 지정하며 기본값은 `127.0.0.1:3000`입니다.
+- `POST /sample/postContent` 요청은 본문 길이를 최대 256자로 제한합니다. 초과하면
+  `400 Bad Request`를 반환합니다.
+- 서버 실행 중 오류가 발생해도 패닉하지 않고 로그를 출력합니다.
