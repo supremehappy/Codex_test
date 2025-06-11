@@ -1,6 +1,6 @@
-use axum::{routing::{get, post}, Router, Json};
+use axum::{routing::{get, post}, Router, Json, http::StatusCode};
 use serde::{Deserialize, Serialize};
-use std::net::SocketAddr;
+use std::{env, net::SocketAddr};
 
 #[derive(Serialize)]
 struct HelloResponse {
@@ -23,10 +23,14 @@ struct ContentResponse {
     received: String,
 }
 
-async fn post_content(Json(payload): Json<ContentRequest>) -> Json<ContentResponse> {
-    Json(ContentResponse {
+async fn post_content(Json(payload): Json<ContentRequest>) -> Result<Json<ContentResponse>, StatusCode> {
+    if payload.content.len() > 256 {
+        return Err(StatusCode::BAD_REQUEST);
+    }
+
+    Ok(Json(ContentResponse {
         received: payload.content,
-    })
+    }))
 }
 
 #[tokio::main]
@@ -35,12 +39,22 @@ async fn main() {
         .route("/sample/getHello", get(get_hello))
         .route("/sample/postContent", post(post_content));
 
-    let addr = SocketAddr::from(([0, 0, 0, 0], 3000));
+    let host = env::var("HOST").unwrap_or_else(|_| "127.0.0.1".to_string());
+    let port = env::var("PORT")
+        .ok()
+        .and_then(|p| p.parse::<u16>().ok())
+        .unwrap_or(3000);
+    let addr: SocketAddr = format!("{}:{}", host, port)
+        .parse()
+        .expect("Invalid address");
+
     println!("Listening on {}", addr);
-    axum::Server::bind(&addr)
+    if let Err(e) = axum::Server::bind(&addr)
         .serve(app.into_make_service())
         .await
-        .unwrap();
+    {
+        eprintln!("server error: {}", e);
+    }
 }
 
 #[cfg(test)]
